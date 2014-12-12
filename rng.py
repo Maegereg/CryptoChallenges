@@ -11,7 +11,7 @@ class MT19937:
 		self.index = 0
 		self.state[0] = seed
 		for i in range(1, len(self.state)):
-			self.state[i] = (1812433253*((self.state[i-1]>>30)^self.state[i-1])+1)&(2**33-1)
+			self.state[i] = (1812433253*((self.state[i-1]>>30)^self.state[i-1])+i)&(2**32-1)
 
 	def _updateState(self):
 		for i in range(len(self.state)):
