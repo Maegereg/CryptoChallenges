@@ -86,3 +86,8 @@ def aesCTREncrypt(plaintext, key, nonce):
 #Encryption and decryption are the same operation
 def aesCTRDecrypt(ciphertext, key, nonce):
 	return aesCTREncrypt(ciphertext, key, nonce)
+
+def editCTR(ciphertext, key, nonce, offset, newtext):
+	plaintext = aesCTRDecrypt(ciphertext, key, nonce)
+	newplaintext = plaintext[:offset]+newtext+plaintext[offset+len(newtext):]
+	return aesCTREncrypt(newplaintext, key, nonce)
