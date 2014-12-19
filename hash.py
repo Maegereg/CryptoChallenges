@@ -6,19 +6,30 @@ def leftRotate(input, places, bitlen):
 	truePlaces = places%bitlen
 	return ((input<<truePlaces)+(input>>(bitlen-truePlaces)))&(2**bitlen-1)
 
-#Implemented myself, because why not?
-#Based on psuedocode from http://en.wikipedia.org/wiki/SHA-1
-#Also looked at code at https://github.com/ajalt/python-sha1/blob/master/sha1.py
-def sha1(message):
-	h0 = 0x67452301
-	h1 = 0xEFCDAB89
-	h2 = 0x98BADCFE
-	h3 = 0x10325476
-	h4 = 0xC3D2E1F0
-
+#Performs padding according to SHA-1 specifications
+def mdPad(message):
 	paddedMessage = message+chr(0x80)
 	paddedMessage = paddedMessage+(chr(0)*(56 - len(paddedMessage)%64 if len(paddedMessage)%64 <= 56 else 56+ 64 - len(paddedMessage)%64 ))
 	paddedMessage = paddedMessage+struct.pack(">Q", len(message)*8)	
+	return paddedMessage
+
+'''Implemented myself, because why not?
+Based on psuedocode from http://en.wikipedia.org/wiki/SHA-1
+Also looked at code at https://github.com/ajalt/python-sha1/blob/master/sha1.py
+Optional parameters allow length extensions. r0, r1, etc allow setting the hash 
+registers to a different initial value (like the end values of a different hash)
+extraLength allows manipulation of the length padding for extension (measured in bytes)
+'''
+def sha1(message, r0 = 0x67452301, r1 = 0xEFCDAB89, r2 = 0x98BADCFE,
+		 r3 = 0x10325476, r4 = 0xC3D2E1F0, extraLength = 0):
+	h0 = r0
+	h1 = r1
+	h2 = r2
+	h3 = r3
+	h4 = r4
+
+	paddedMessage = mdPad((chr(0)*extraLength)+message)[extraLength:]
+	#print repr(paddedMessage)
 
 
 	for i in range(0, len(paddedMessage), 64):
@@ -60,8 +71,6 @@ def sha1(message):
 		h2 = (h2+c) & (2**32-1)
 		h3 = (h3+d) & (2**32-1)
 		h4 = (h4+e) & (2**32-1)
-
-		#print h0,h1,h2,h3,h4
 
 	return h0<<128 | h1<<96 | h2<<64 | h3<<32 | h4
 
