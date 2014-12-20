@@ -7,10 +7,10 @@ def leftRotate(input, places, bitlen):
 	return ((input<<truePlaces)+(input>>(bitlen-truePlaces)))&(2**bitlen-1)
 
 #Performs padding according to SHA-1 specifications
-def mdPad(message):
+def mdPad(message, bigEndian = True):
 	paddedMessage = message+chr(0x80)
 	paddedMessage = paddedMessage+(chr(0)*(56 - len(paddedMessage)%64 if len(paddedMessage)%64 <= 56 else 56+ 64 - len(paddedMessage)%64 ))
-	paddedMessage = paddedMessage+struct.pack(">Q", len(message)*8)	
+	paddedMessage = paddedMessage+(struct.pack(">Q", len(message)*8) if bigEndian else struct.pack("<Q", len(message)*8))
 	return paddedMessage
 
 '''Implemented myself, because why not?
@@ -29,7 +29,6 @@ def sha1(message, r0 = 0x67452301, r1 = 0xEFCDAB89, r2 = 0x98BADCFE,
 	h4 = r4
 
 	paddedMessage = mdPad((chr(0)*extraLength)+message)[extraLength:]
-	#print repr(paddedMessage)
 
 
 	for i in range(0, len(paddedMessage), 64):
@@ -88,6 +87,127 @@ def testSha1():
 		return
 	print "Passed all tests"
 
+def md4RoundFunction(r1, r2, r3, r4, func, constant, word, rotate):
+	return leftRotate((r1 + func(r2, r3, r4) + word + constant)&(2**32-1), rotate, 32)
+
+def md4Round1Func(r1, r2, r3, r4, word, rotate):
+	return md4RoundFunction(r1, r2, r3, r4, lambda x, y, z: (x&y) | ((~x) & z), 0, word, rotate)
+
+def md4Round2Func(r1, r2, r3, r4, word, rotate):
+	return md4RoundFunction(r1, r2, r3, r4, lambda x, y, z: (x&y) | (x & z) | (y&z), 0x5A827999, word, rotate)
+
+def md4Round3Func(r1, r2, r3, r4, word, rotate):
+	return md4RoundFunction(r1, r2, r3, r4, lambda x, y, z: x^y^z, 0x6ED9EBA1, word, rotate)
+
+def reverseBytes(toReverse):
+	output = 0
+	while toReverse > 0:
+		output = output<<8
+		output += toReverse & 255
+		toReverse = toReverse>>8
+	return output
+
+'''
+Also implemented myself, for similar reasons
+This implementation based on RFC 1320
+Debugged with the help of https://gist.github.com/tristanwietsma/5937448
+'''
+def md4(message):
+	a = 0x67452301
+	b = 0xEFCDAB89
+	c = 0x98BADCFE
+	d = 0x10325476
+
+	paddedMessage = mdPad(message, bigEndian=False)
+
+	for i in range(0, len(paddedMessage), 64):
+		curChunk = paddedMessage[i:i+64]
+		X = [struct.unpack("<I", curChunk[i:i+4])[0] for i in range(0, len(curChunk), 4)]
+
+
+		AA = a
+		BB = b
+		CC = c
+		DD = d
+
+		#Round 1, in which we wonder why this isn't a loop
+		a = md4Round1Func(a,b,c,d,X[0],3)
+		d = md4Round1Func(d,a,b,c,X[1],7)
+		c = md4Round1Func(c,d,a,b,X[2],11)
+		b = md4Round1Func(b,c,d,a,X[3],19)
+		a = md4Round1Func(a,b,c,d,X[4],3)
+		d = md4Round1Func(d,a,b,c,X[5],7)
+		c = md4Round1Func(c,d,a,b,X[6],11)
+		b = md4Round1Func(b,c,d,a,X[7],19)
+		a = md4Round1Func(a,b,c,d,X[8],3)
+		d = md4Round1Func(d,a,b,c,X[9],7)
+		c = md4Round1Func(c,d,a,b,X[10],11)
+		b = md4Round1Func(b,c,d,a,X[11],19)
+		a = md4Round1Func(a,b,c,d,X[12],3)
+		d = md4Round1Func(d,a,b,c,X[13],7)
+		c = md4Round1Func(c,d,a,b,X[14],11)
+		b = md4Round1Func(b,c,d,a,X[15],19)
+
+		#Round 2, in which we realize why it isn't a loop and groan is dispair
+		a = md4Round2Func(a,b,c,d,X[0],3)
+		d = md4Round2Func(d,a,b,c,X[4],5)
+		c = md4Round2Func(c,d,a,b,X[8],9)
+		b = md4Round2Func(b,c,d,a,X[12],13)
+		a = md4Round2Func(a,b,c,d,X[1],3)
+		d = md4Round2Func(d,a,b,c,X[5],5)
+		c = md4Round2Func(c,d,a,b,X[9],9)
+		b = md4Round2Func(b,c,d,a,X[13],13)
+		a = md4Round2Func(a,b,c,d,X[2],3)
+		d = md4Round2Func(d,a,b,c,X[6],5)
+		c = md4Round2Func(c,d,a,b,X[10],9)
+		b = md4Round2Func(b,c,d,a,X[14],13)
+		a = md4Round2Func(a,b,c,d,X[3],3)
+		d = md4Round2Func(d,a,b,c,X[7],5)
+		c = md4Round2Func(c,d,a,b,X[11],9)
+		b = md4Round2Func(b,c,d,a,X[15],13)
+
+
+		#Round 3, in which we grow tired of this nonsense
+		a = md4Round3Func(a,b,c,d,X[0],3)
+		d = md4Round3Func(d,a,b,c,X[8],9)
+		c = md4Round3Func(c,d,a,b,X[4],11)
+		b = md4Round3Func(b,c,d,a,X[12],15)
+		a = md4Round3Func(a,b,c,d,X[2],3)
+		d = md4Round3Func(d,a,b,c,X[10],9)
+		c = md4Round3Func(c,d,a,b,X[6],11)
+		b = md4Round3Func(b,c,d,a,X[14],15)
+		a = md4Round3Func(a,b,c,d,X[1],3)
+		d = md4Round3Func(d,a,b,c,X[9],9)
+		c = md4Round3Func(c,d,a,b,X[5],11)
+		b = md4Round3Func(b,c,d,a,X[13],15)
+		a = md4Round3Func(a,b,c,d,X[3],3)
+		d = md4Round3Func(d,a,b,c,X[11],9)
+		c = md4Round3Func(c,d,a,b,X[7],11)
+		b = md4Round3Func(b,c,d,a,X[15],15)
+
+		a = (a+AA)&(2**32-1)
+		b = (b+BB)&(2**32-1)
+		c = (c+CC)&(2**32-1)
+		d = (d+DD)&(2**32-1)
+
+	return reverseBytes(a)<< 96 | reverseBytes(b) << 64 | reverseBytes(c) << 32 | reverseBytes(d)
+
+
+def testMD4():
+	print "Checking MD4 output against known values:"
+	try:
+		assert md4("The quick brown fox jumps over the lazy dog") == 0x1bee69a46ba811185c194762abaeae90
+		print ".",
+		assert md4("The quick brown fox jumps over the lazy cog") == 0xb86e130ce7028da59e672d56ad0113df
+		print ".",
+		assert md4("") == 0x31d6cfe0d16ae931b73c59d7e0c089c0
+		print ".",
+	except AssertionError:
+		print "Failed. MD4 implementation broken."
+		return
+	print "Passed all tests"
+
 
 if __name__ == "__main__":
     testSha1()
+    testMD4()
