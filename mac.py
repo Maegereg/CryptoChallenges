@@ -12,3 +12,8 @@ def sha1KeyPrefix(message, key):
 def verifySha1KeyPrefix(message, key, mac):
 	return verifyKeyPrefix(message, key, mac, hash.sha1)
 
+def md4KeyPrefix(message, key):
+	return keyPrefixMac(message, key, hash.md4)
+
+def verifyMd4KeyPrefix(message, key, mac):
+	return verifyKeyPrefix(message, key, mac, hash.md4)

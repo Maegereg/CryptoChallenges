@@ -112,13 +112,13 @@ Also implemented myself, for similar reasons
 This implementation based on RFC 1320
 Debugged with the help of https://gist.github.com/tristanwietsma/5937448
 '''
-def md4(message):
-	a = 0x67452301
-	b = 0xEFCDAB89
-	c = 0x98BADCFE
-	d = 0x10325476
+def md4(message, aVal = 0x67452301, bVal = 0xEFCDAB89, cVal = 0x98BADCFE, dVal = 0x10325476, extraLength = 0):
+	a = aVal
+	b = bVal
+	c = cVal
+	d = dVal
 
-	paddedMessage = mdPad(message, bigEndian=False)
+	paddedMessage = mdPad((chr(0)*extraLength)+message, bigEndian = False)[extraLength:]
 
 	for i in range(0, len(paddedMessage), 64):
 		curChunk = paddedMessage[i:i+64]
