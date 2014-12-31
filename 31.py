@@ -26,6 +26,7 @@ def guessSignature(filename, address, port):
 				maxTime = guessTime
 				maxDigit = nextByte
 		signatureGuess += chr(maxDigit)
+		print convert.byteStringToHex(signatureGuess)
 	return convert.byteStringToHex(signatureGuess)
 
 

@@ -10,7 +10,8 @@ def insecureCompareStrings(str1, str2):
 		if i >= len(str2):			return False
 		if str1[i] != str2[i]:
 			return False
-		sleep(0.05)
+		#Delay reduced to .005 makes the ex31 solution break
+		sleep(0.005)
 	return True
 
 
