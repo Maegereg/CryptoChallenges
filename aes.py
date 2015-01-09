@@ -47,7 +47,7 @@ def aesCBCEncrypt(plaintext, key, IV):
 	paddedText = padForAES(plaintext)
 	cipherblocks = [IV]
 	startBlock = 0
-	while startBlock < len(plaintext):
+	while startBlock < len(paddedText):
 		cipherblocks.append( aesEncrypt( xorByteStrings(paddedText[startBlock:startBlock+AES_BLOCK_SIZE], cipherblocks[-1] ), key ))
 		startBlock += AES_BLOCK_SIZE
 	return "".join(cipherblocks[1:])
