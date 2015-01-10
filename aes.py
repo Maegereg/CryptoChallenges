@@ -72,7 +72,7 @@ def generateCTRKeystream(length, key, nonce):
 	keystream = ""
 	while len(keystream) < length:
 		#Concatenate the nonce and the counter
-		inputBlock = string.ljust(convert.convertToByteString(nonce, bigEndian=False), 8, chr(0))+string.ljust(convert.convertToByteString(counter, bigEndian=False), 8, chr(0))
+		inputBlock = string.ljust(convert.intToByteString(nonce, bigEndian=False), 8, chr(0))+string.ljust(convert.intToByteString(counter, bigEndian=False), 8, chr(0))
 		keystream = keystream+aesEncrypt(inputBlock, key)
 		counter += 1
 		counter = counter%(2**64)

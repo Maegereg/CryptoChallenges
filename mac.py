@@ -29,7 +29,7 @@ def hMAC(message, key, hashFunction, blockSize):
 	oKeyPad = xor.xorByteStrings(chr(0x5c)*blockSize, key)
 	iKeyPad = xor.xorByteStrings(chr(0x36)*blockSize, key)
 
-	return hashFunction(oKeyPad+ convert.convertToByteString(hashFunction(iKeyPad+message)))
+	return hashFunction(oKeyPad+ convert.intToByteString(hashFunction(iKeyPad+message)))
 
 def hMAC_SHA1(message, key):
 	return hMAC(message, key, hash.sha1, 64)

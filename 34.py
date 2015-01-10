@@ -7,7 +7,7 @@ class DHEchoer:
 	def sendPublicDHValue(self, A, p, g):
 		self.privateKey = dh.generatePrivateKey(p)
 		self.sharedSecret = dh.deriveSecret(A, self.privateKey, p)
-		self.aesKey = convert.convertToByteString(hash.sha1(convert.convertToByteString(self.sharedSecret)))[0:16]
+		self.aesKey = convert.intToByteString(hash.sha1(convert.intToByteString(self.sharedSecret)))[0:16]
 		return dh.generatePublicValue(self.privateKey, g, p)
 
 	def sendAESMessage(self, ciphertext, IV):
@@ -23,7 +23,7 @@ class DHMITM:
 
 	def sendPublicDHValue(self, A, p, g):
 		self.sharedSecret = 0
-		self.aesKey = convert.convertToByteString(hash.sha1(convert.convertToByteString(self.sharedSecret)))[0:16]
+		self.aesKey = convert.intToByteString(hash.sha1(convert.intToByteString(self.sharedSecret)))[0:16]
 		self.realDestination.sendPublicDHValue(p, p, g)
 		return p
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 	publicValue = counterPart.sendPublicDHValue(dh.generatePublicValue(privateKey, dh.STANDARD_G, dh.STANDARD_P), dh.STANDARD_P, dh.STANDARD_G)
 	sharedSecret = dh.deriveSecret(publicValue, privateKey, dh.STANDARD_P)
 
-	aesKey = convert.convertToByteString(hash.sha1(convert.convertToByteString(sharedSecret)))[0:16]
+	aesKey = convert.intToByteString(hash.sha1(convert.intToByteString(sharedSecret)))[0:16]
 	aesIV = aes.generateRandomKey()
 
 	returnMessage, returnIV = counterPart.sendAESMessage(aes.aesCBCEncrypt("Test Message", aesKey, aesIV), aesIV)
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
 	sharedSecret = dh.deriveSecret(publicValue, privateKey, dh.STANDARD_P)
 
-	aesKey = convert.convertToByteString(hash.sha1(convert.convertToByteString(sharedSecret)))[0:16]
+	aesKey = convert.intToByteString(hash.sha1(convert.intToByteString(sharedSecret)))[0:16]
 	aesIV = aes.generateRandomKey()
 
 	returnMessage, returnIV = newCounterpart.sendAESMessage(aes.aesCBCEncrypt("Secret Message", aesKey, aesIV), aesIV)

@@ -4,7 +4,7 @@ import diffiehellman as dh
 import hash
 
 def getAESKeyFromSharedSecret(sharedSecret):
-	return convert.convertToByteString(hash.sha1(convert.convertToByteString(sharedSecret)))[0:16]
+	return convert.intToByteString(hash.sha1(convert.intToByteString(sharedSecret)))[0:16]
 
 class DHEchoer:
 	def sendGroupParameters(self, p, g):
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 	publicValue = counterPart.sendPublicDHValue(dh.generatePublicValue(privateKey, dh.STANDARD_G, dh.STANDARD_P))
 	sharedSecret = dh.deriveSecret(publicValue, privateKey, dh.STANDARD_P)
 
-	aesKey = convert.convertToByteString(hash.sha1(convert.convertToByteString(sharedSecret)))[0:16]
+	aesKey = convert.intToByteString(hash.sha1(convert.intToByteString(sharedSecret)))[0:16]
 	aesIV = aes.generateRandomKey()
 
 	returnMessage, returnIV = counterPart.sendAESMessage(aes.aesCBCEncrypt("Test Message", aesKey, aesIV), aesIV)
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
 	sharedSecret = dh.deriveSecret(publicValue, privateKey, dh.STANDARD_P)
 
-	aesKey = convert.convertToByteString(hash.sha1(convert.convertToByteString(sharedSecret)))[0:16]
+	aesKey = convert.intToByteString(hash.sha1(convert.intToByteString(sharedSecret)))[0:16]
 	aesIV = aes.generateRandomKey()
 
 	returnMessage, returnIV = newCounterpart.sendAESMessage(aes.aesCBCEncrypt("Secret Message", aesKey, aesIV), aesIV)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
 	sharedSecret = dh.deriveSecret(publicValue, privateKey, dh.STANDARD_P)
 
-	aesKey = convert.convertToByteString(hash.sha1(convert.convertToByteString(sharedSecret)))[0:16]
+	aesKey = convert.intToByteString(hash.sha1(convert.intToByteString(sharedSecret)))[0:16]
 	aesIV = aes.generateRandomKey()
 
 	returnMessage, returnIV = newCounterpart.sendAESMessage(aes.aesCBCEncrypt("Secret Message 2", aesKey, aesIV), aesIV)
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
 	sharedSecret = dh.deriveSecret(publicValue, privateKey, dh.STANDARD_P)
 
-	aesKey = convert.convertToByteString(hash.sha1(convert.convertToByteString(sharedSecret)))[0:16]
+	aesKey = convert.intToByteString(hash.sha1(convert.intToByteString(sharedSecret)))[0:16]
 	aesIV = aes.generateRandomKey()
 
 	returnMessage, returnIV = newCounterpart.sendAESMessage(aes.aesCBCEncrypt("Secret Message 3", aesKey, aesIV), aesIV)
