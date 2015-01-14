@@ -5,7 +5,7 @@ STANDARD_G = 2
 
 
 def generatePrivateKey(p = STANDARD_P):
-	return random.randint(0, p)
+	return random.randint(0, p-1)
 
 def generatePublicValue(privateKey, g = STANDARD_G, p = STANDARD_P):
 	return pow(g, privateKey, p)

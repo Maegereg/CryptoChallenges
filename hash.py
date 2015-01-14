@@ -1,3 +1,5 @@
+from Crypto.Hash import SHA256
+import convert
 import math
 import struct
 
@@ -207,6 +209,9 @@ def testMD4():
 		return
 	print "Passed all tests"
 
+
+def sha256(message):
+	return convert.byteStringToInt(SHA256.SHA256Hash(message).digest())
 
 if __name__ == "__main__":
     testSha1()

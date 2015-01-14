@@ -33,3 +33,6 @@ def hMAC(message, key, hashFunction, blockSize):
 
 def hMAC_SHA1(message, key):
 	return hMAC(message, key, hash.sha1, 64)
+
+def HMAC_SHA256(message, key):
+	return hMAC(message, key, hash.sha256, 64)
