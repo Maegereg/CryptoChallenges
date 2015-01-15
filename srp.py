@@ -3,6 +3,7 @@ import diffiehellman as dh
 import hash
 import mac
 import random
+import socket
 import sys
 
 STANDARD_G = 2
@@ -80,6 +81,133 @@ Returns an integer
 '''
 def generateClientValidator(sharedSecret, salt):
 	return mac.HMAC_SHA256(sharedSecret, salt)
+
+class SRPServer:
+	def __init__(self, port):
+		self.users = {}
+		self.port = port
+
+	def addUser(self, user, password):
+		salt = generateRandomSalt()
+		self.users[user] = (generatePasswordVerifier(password, salt), salt)
+
+	def runServer(self):
+		recieveSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+		recieveSocket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR, 1)
+		recieveSocket.bind(("", self.port))
+
+		recieveSocket.listen(5)
+
+		#while(True):
+		clientSock, _ = recieveSocket.accept()
+		userName, clientPublicValue = self.recieveClientValues(clientSock)
+		#Error case
+		if userName is None or clientPublicValue is None:
+			return
+
+		passwordVerifier, salt = self.users[userName]
+		sessionPrivateKey = generatePrivateKey()
+
+
+		clientSock.sendall(str(convert.byteStringToInt(salt))+","+str(generateServerPublicValue(sessionPrivateKey, passwordVerifier)))
+
+		sharedSecret = serverDeriveSharedSecret(clientPublicValue, sessionPrivateKey, passwordVerifier)
+
+		clientValidator = self.recieveClientValidator(clientSock)
+		#Error check
+		if clientValidator is not None:
+			if clientValidator == generateClientValidator(sharedSecret, salt):
+				clientSock.sendall("OK")
+				return
+
+		try:
+			clientSock.sendall("NOTOK")
+		except Exception:
+			pass
+
+
+	'''
+	Accepts the client's socket, and returns the client's username and public value
+	Returns None, None in the case of any sort of error, or malformed input
+	'''
+	def recieveClientValues(self, clientSock):
+		try:
+			data = clientSock.recv(1024)
+			splitData = data.split(",")
+			userName = splitData[0]
+			clientPublicValue = int(splitData[1])
+			return (userName, clientPublicValue)
+		except Exception:
+			return None, None
+
+	'''
+	Accepts the client's socket, and returns the client's validator
+	Returns None if there's any sort of error, or malformed data
+	'''
+	def recieveClientValidator(self, clientSock):
+		try:
+			data = clientSock.recv(1024)
+			return int(data)
+		except Exception:
+			return None
+
+
+
+class SRPClient:
+	def __init__(self, username, password):
+		self.username = username
+		self.password = password
+
+	'''
+	Returns true if logging in to the given server with the given username and password succeeds
+	'''
+	def login(self, ip, port):
+		sendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		sendSocket.connect((ip, port))
+
+		privateKey = generatePrivateKey()
+		
+		sendSocket.send(str(self.username)+","+str(generateClientPublicValue(privateKey)))
+
+		salt, serverPublicValue = self.recieveServerValues(sendSocket)
+		if salt is None or serverPublicValue is None:
+			print "Failed to recieve serverstuff"
+			return False
+
+		sharedSecret = clientDeriveSharedSecret(self.password, salt, privateKey, serverPublicValue)
+		validator = generateClientValidator(sharedSecret, salt)
+		sendSocket.send(str(validator))
+
+		if self.recieveOK(sendSocket):
+			return True
+		print "Failed to recieve OK"
+		return False
+
+	'''
+	Recieves the server's public value and salt from the given socket.
+	Returns a tuple of salt, public value
+	Returns None, None if something goes wrong
+	'''
+	def recieveServerValues(self, recieveSocket):
+		try:
+			data = recieveSocket.recv(1024)
+			splitData = data.split(",")
+			return (convert.intToByteString(int(splitData[0])), int(splitData[1]))
+		except Exception as e:
+			return (None, None)
+
+	'''
+	Returns True if the first thing recieved on the socket is OK, false otherwise
+	'''
+	def recieveOK(self, recieveSocket):
+		try:
+			data = recieveSocket.recv(1024)
+			return data == "OK"
+		except Exception:
+			return False
+
+
 
 if __name__ == "__main__":
 	password = "thisisaverystrongpasswor"
