@@ -99,7 +99,6 @@ class SRPServer:
 
 		recieveSocket.listen(5)
 
-		#while(True):
 		clientSock, _ = recieveSocket.accept()
 		userName, clientPublicValue = self.recieveClientValues(clientSock)
 		#Error case
@@ -172,7 +171,7 @@ class SRPClient:
 
 		salt, serverPublicValue = self.recieveServerValues(sendSocket)
 		if salt is None or serverPublicValue is None:
-			print "Failed to recieve serverstuff"
+			sendSocket.close()
 			return False
 
 		sharedSecret = clientDeriveSharedSecret(self.password, salt, privateKey, serverPublicValue)
@@ -180,8 +179,9 @@ class SRPClient:
 		sendSocket.send(str(validator))
 
 		if self.recieveOK(sendSocket):
+			sendSocket.close()
 			return True
-		print "Failed to recieve OK"
+		sendSocket.close()
 		return False
 
 	'''
