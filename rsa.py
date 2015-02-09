@@ -1,4 +1,5 @@
 import convert
+import padding
 import random
 import math
 
@@ -46,7 +47,7 @@ def modInverse(a, m):
 
 '''
 Generates a public/private key pair with min <= n <= max
-Returns (e, d, n) where (e, n) is the public key and (d, n) is the private key
+Returns ((e, n), (d, n)) where (e, n) is the public key and (d, n) is the private key
 '''
 def keygen(min=STANDARD_MIN, max=STANDARD_MAX, e=STANDARD_E):
     primes = []
@@ -57,35 +58,56 @@ def keygen(min=STANDARD_MIN, max=STANDARD_MAX, e=STANDARD_E):
     n = (primes[0])*(primes[1])
     totient = (primes[0]-1)*(primes[1]-1)
     d = modInverse(e, totient)
-    return (e, d, n)
-
-#Only works if message < n
-def encryptInt(message, e, n):
-    return pow(message, e, n)
-
-#Decryption is identical to encryption
-def decryptInt(ciphertext, d, n):
-    return encryptInt(ciphertext, d, n)
+    return ((e, n), (d, n))
 
 '''
-Encrypting strings is a bit more difficult: 
-we have to make sure that the integer representation isn't bigger than n
+Accepts a message, and a public key in the form (e, n)
+Only works if message < n
 '''
-def encryptString(message, e, n):
-    maximumLength = int(math.log(n, 256))
-    choppedMessage = [message[i* maximumLength: (i+1)*maximumLength] for i in range(len(message)/ maximumLength+1)]
-    return map(lambda x: encryptInt(convert.byteStringToInt(x), e, n), choppedMessage)
+def encryptInt(message, pubKey):
+    return pow(message, pubKey[0], pubKey[1])
 
-def decryptString(ciphertext, d, n):
-    return "".join(map(lambda x: convert.intToByteString(decryptInt(x, d, n)), ciphertext))
+'''
+Accepts a message, and a public key in the form (d, n)
+Identical to encryption
+'''
+def decryptInt(ciphertext, privateKey):
+    return encryptInt(ciphertext, privateKey)
+
+'''
+Encrypts an arbitrary length string
+Public key must be in the form (e, n)
+Returns a string
+'''
+def encryptString(message, pubKey):
+    #The largest number of bytes that can only represent numbers smaller than the modulus.
+    blockLen = int(math.log(pubKey[1], 256))
+    paddedMessage = padding.pkcs7String(message, blockLen)
+    chunkedMessage = [paddedMessage[i* blockLen: (i+1)*blockLen] for i in range(len(paddedMessage)/ blockLen)]
+    encryptedChunks = map(lambda x: encryptInt(convert.byteStringToInt(x), pubKey), chunkedMessage)
+    #Encrypted messages have a blockLength one greater than plaintext
+    #We want the smallest number of bytes that can represent the modulus, which is at most one greater than plaintext blocklength
+    #(Technically that number could be blockLen, but absolute smallest isn't important)
+    return "".join(map(lambda x: convert.intToByteString(x).rjust(blockLen+1, chr(0)), encryptedChunks))
+
+'''
+Private key must be in the form (d, n)
+Returns a string
+'''
+def decryptString(ciphertext, privateKey):    
+    chunkLen = int(math.log(privateKey[1], 256))+1
+    encryptedChunks = [ciphertext[i* chunkLen: (i+1)*chunkLen] for i in range(len(ciphertext)/ chunkLen)]
+    encryptedChunks = map(convert.byteStringToInt, encryptedChunks)
+    chunkedMessage = map(lambda x: convert.intToByteString(decryptInt(x, privateKey)).rjust(chunkLen-1, chr(0)), encryptedChunks)
+    return padding.stripPkcs7("".join(chunkedMessage))
 
 if __name__ == "__main__":
     testMessage = "This is a test message of unusual length that will have to be broken into segments"
 
-    e, d, n = keygen()
+    pubKey, privKey = keygen()
 
-    ciphertext = encryptString(testMessage, e, n)
+    ciphertext = encryptString(testMessage, pubKey)
 
-    plaintext = decryptString(ciphertext, d, n)
+    plaintext = decryptString(ciphertext, privKey)
 
     assert plaintext == testMessage
