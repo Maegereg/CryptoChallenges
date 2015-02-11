@@ -10,28 +10,27 @@ However, each ciphertext can only be decrypted once.
 class RSAOracle:
 	def __init__(self):
 		self.prevMessages = set()
-		self.e, self.d, self.n = rsa.keygen()
+		self.pubkey, self.privkey = rsa.keygen()
 
 	'''
-	Performs a decryption on the ciphertext. Returns either the encoded plaintext
-	(as a list of integers, which, when converted to strings and joined become the 
-	full plaintext), or an empty string if the message has already been decrypted
+	Performs a decryption on the ciphertext. Returns either the plaintext, 
+	or an empty string if the message has already been decrypted
 	'''
 	def decrypt(self, ciphertext):
-		hashValue = hash.sha256("".join(map(str, ciphertext)))
+		hashValue = hash.sha256(ciphertext)
 		if hashValue in self.prevMessages:
 			return ""
 		else:
 			self.prevMessages.add(hashValue)
 			#We can't just combine back to a string because the math wouldn't work
-			return map(lambda x: rsa.decryptInt(x, self.d, self.n), ciphertext)
+			return rsa.decryptString(ciphertext, self.privkey, True)
 
 	'''
 	Generate an encrypted message that can't just be decrypted
 	'''
 	def getMessage(self):
-		message = "message too long for single encoding"
-		toReturn = rsa.encryptString(message, self.e, self.n)
+		message = "message"
+		toReturn = rsa.encryptString(message, self.pubkey)
 		#So it can't just be decrypted
 		self.decrypt(toReturn)
 		return toReturn
@@ -40,11 +39,12 @@ class RSAOracle:
 	Returns the public key as an (e, n) pair
 	'''
 	def getPublicKey(self):
-		return (self.e, self.n)
+		return self.pubkey
 
 '''
 Modifies a ciphertext so that it will decrypt to a value that allows recovery of the plaintext
-Returns the new ciphertext, and the S used to produce it
+Accepts a encoded Ciphertext (a list of ints)
+Returns the new encoded ciphertext, and the S used to produce it
 '''
 def generateModifiedCiphertext(ciphertext, publicExponent, modulus):
 	S = random.randint(2, modulus-1)
@@ -58,12 +58,20 @@ ciphertext, modifies the ciphertext, decrypts it and recovers the plaintext
 '''
 def decryptCiphertext(ciphertext, oracle):
 	e, n = oracle.getPublicKey()
-	newCtext, S = generateModifiedCiphertext(ciphertext, e, n)
-	newPlaintext = oracle.decrypt(newCtext)
+
+	encodedCiphertext = rsa.encodeCiphertext(ciphertext, oracle.getPublicKey())
+	
+	newCtext, S = generateModifiedCiphertext(encodedCiphertext, e, n)
+
+	newPlaintext = oracle.decrypt(rsa.decodeCiphertext(newCtext, oracle.getPublicKey()))
+
+	#Encoding is failing in this case
+	encodedPlaintext = rsa.encodePlaintext(newPlaintext, oracle.getPublicKey(), False)
 
 	inverseS = rsa.modInverse(S, n)
-	encodedPlainText = map(lambda x: (x*inverseS)%n, newPlaintext)
-	return "".join(map(convert.intToByteString, encodedPlainText))
+	encodedPlaintext = map(lambda x: (x*inverseS)%n, encodedPlaintext)
+
+	return "".join(map(convert.intToByteString, encodedPlaintext))
 
 
 
@@ -72,4 +80,4 @@ if __name__ == "__main__":
 	message = oracle.getMessage()
 	#We can't just decrypt the message
 	print oracle.decrypt(message) == ""
-	print decryptCiphertext(message, oracle)
+	print repr(decryptCiphertext(message, oracle))

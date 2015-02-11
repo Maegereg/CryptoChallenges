@@ -75,31 +75,80 @@ def decryptInt(ciphertext, privateKey):
     return encryptInt(ciphertext, privateKey)
 
 '''
+Transforms a plaintext message into a list of integers 
+key can be either a public or private key in the form of (e/d, n)
+'''
+def encodePlaintext(message, key, pad=True):
+    #The largest number of bytes that can only represent numbers smaller than the modulus.
+    blockLen = blockLen = int(math.log(key[1], 256))
+    if pad:
+        paddedMessage = padding.pkcs7String(message, blockLen)
+    else:
+        paddedMessage = message
+    #Chunks can be blockLen+1 in size if that works out to <n, otherwise blockLen
+    chunkedMessage = []
+    curPosition = 0
+    while curPosition < len(paddedMessage):
+        nextChunklen = blockLen+1
+        if convert.byteStringToInt(paddedMessage[curPosition:curPosition+nextChunklen]) > key[1]:
+            nextChunklen -= 1
+        chunkedMessage.append(convert.byteStringToInt(paddedMessage[curPosition:curPosition+nextChunklen]))
+        curPosition += nextChunklen
+    return chunkedMessage
+
+'''
+Performs the reverse operation of encodePlaintext
+key can be either a public or private key in the form of (e/d, n)
+'''
+def decodePlaintext(encodedMessage, key, pad = True):
+    blockLen = blockLen = int(math.log(key[1], 256))
+    chunkedMessage = map(lambda x: convert.intToByteString(x).rjust(blockLen, chr(0)), encodedMessage)
+    if pad:
+        return padding.stripPkcs7("".join(chunkedMessage))
+    else:
+        return "".join(chunkedMessage)
+
+'''
+Takes the simple ciphertext form (a list of integers) and decodes to it a string
+key can be either a public or private key in the form of (e/d, n)
+'''
+def decodeCiphertext(encodedCiphertext, key):
+    #Encrypted messages have a blockLength one greater than plaintext
+    #We want the smallest number of bytes that can represent the modulus, which is at most one greater than plaintext blocklength
+    #(Technically that number could be blockLen, but absolute smallest isn't important)
+    chunkLen = int(math.log(key[1], 256))+1
+    return "".join(map(lambda x: convert.intToByteString(x).rjust(chunkLen, chr(0)), encodedCiphertext))
+
+'''
+Performs the reverse operation of decodeCiphertext
+Takes a string and returns a list of integers
+key can be either a public or private key in the form of (e/d, n)
+'''
+def encodeCiphertext(ciphertext, key):
+    chunkLen = int(math.log(key[1], 256))+1
+    encryptedChunks = [ciphertext[i* chunkLen: (i+1)*chunkLen] for i in range(len(ciphertext)/ chunkLen)]
+    return map(convert.byteStringToInt, encryptedChunks)
+
+'''
 Encrypts an arbitrary length string
 Public key must be in the form (e, n)
 Returns a string
 '''
 def encryptString(message, pubKey):
-    #The largest number of bytes that can only represent numbers smaller than the modulus.
-    blockLen = int(math.log(pubKey[1], 256))
-    paddedMessage = padding.pkcs7String(message, blockLen)
-    chunkedMessage = [paddedMessage[i* blockLen: (i+1)*blockLen] for i in range(len(paddedMessage)/ blockLen)]
-    encryptedChunks = map(lambda x: encryptInt(convert.byteStringToInt(x), pubKey), chunkedMessage)
-    #Encrypted messages have a blockLength one greater than plaintext
-    #We want the smallest number of bytes that can represent the modulus, which is at most one greater than plaintext blocklength
-    #(Technically that number could be blockLen, but absolute smallest isn't important)
-    return "".join(map(lambda x: convert.intToByteString(x).rjust(blockLen+1, chr(0)), encryptedChunks))
+    encodedMessage = encodePlaintext(message, pubKey)
+    encryptedChunks = map(lambda x: encryptInt(x, pubKey), encodedMessage)
+    return decodeCiphertext(encryptedChunks, pubKey)
 
 '''
 Private key must be in the form (d, n)
 Returns a string
 '''
-def decryptString(ciphertext, privateKey):    
+def decryptString(ciphertext, privateKey, ignorePadding=False):    
     chunkLen = int(math.log(privateKey[1], 256))+1
-    encryptedChunks = [ciphertext[i* chunkLen: (i+1)*chunkLen] for i in range(len(ciphertext)/ chunkLen)]
-    encryptedChunks = map(convert.byteStringToInt, encryptedChunks)
-    chunkedMessage = map(lambda x: convert.intToByteString(decryptInt(x, privateKey)).rjust(chunkLen-1, chr(0)), encryptedChunks)
-    return padding.stripPkcs7("".join(chunkedMessage))
+    encryptedChunks = encodeCiphertext(ciphertext, privateKey)
+    chunkedMessage = map(lambda x: decryptInt(x, privateKey), encryptedChunks)
+    return decodePlaintext(chunkedMessage, privateKey, not ignorePadding)
+
 
 if __name__ == "__main__":
     testMessage = "This is a test message of unusual length that will have to be broken into segments"
@@ -111,3 +160,9 @@ if __name__ == "__main__":
     plaintext = decryptString(ciphertext, privKey)
 
     assert plaintext == testMessage
+
+    plaintext = '\x01"s\xf4$`\xae\xde\x00\xb0\xeb7\xf1\x00aAR'
+    e = 3
+    n = 536161364582062137235869697073367946849L
+    print encodePlaintext(plaintext, (e, n), False)
+    print convert.byteStringToInt(plaintext)

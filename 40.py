@@ -1,5 +1,6 @@
 import convert
 import math
+import padding
 import rsa
 
 '''
@@ -59,17 +60,17 @@ def extractPlaintext(ctext0, modulus0, ctext1, modulus1, ctext2, modulus2):
 if __name__ == "__main__":
 	plaintext = "This is good"
 
-	key0 = rsa.keygen()
-	key1 = rsa.keygen()
-	key2 = rsa.keygen()
+	pubkey0, _ = rsa.keygen()
+	pubkey1, _ = rsa.keygen()
+	pubkey2, _ = rsa.keygen()
 
-	ctext0 = rsa.encryptString(plaintext, key0[0], key0[2])
-	ctext1 = rsa.encryptString(plaintext, key1[0], key1[2])
-	ctext2 = rsa.encryptString(plaintext, key2[0], key2[2])
+	ctext0 = rsa.encodeCiphertext(rsa.encryptString(plaintext, pubkey0), pubkey0)
+	ctext1 = rsa.encodeCiphertext(rsa.encryptString(plaintext, pubkey1), pubkey1)
+	ctext2 = rsa.encodeCiphertext(rsa.encryptString(plaintext, pubkey2), pubkey2)
 
-	newplaintext = extractPlaintext(ctext0[0], key0[2], ctext1[0], key1[2], ctext2[0], key2[2])
+	newplaintext = extractPlaintext(ctext0[0], pubkey0[1], ctext1[0], pubkey1[1], ctext2[0], pubkey2[1])
 
-	newTextPlaintext = convert.intToByteString(newplaintext)
+	newTextPlaintext = padding.stripPkcs7(convert.intToByteString(newplaintext))
 	
 	print newTextPlaintext == plaintext
 
