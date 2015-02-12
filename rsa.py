@@ -3,10 +3,10 @@ import hash
 import padding
 import random
 import math
+import re
 
 STANDARD_E = 3
-STANDARD_MIN = 2**128
-STANDARD_MAX = 2**129
+STANDARD_BITLEN = 1024
 
 #Performs the Miller-Rabin primality test on n, with k iterations. If it returns false, n is composite. If it returns true,
 # n has less than a 1/4^k chance of being composite
@@ -46,14 +46,23 @@ def modInverse(a, m):
     x, y, g = extended_gcd(a, m)
     return x%m
 
+#Taken from https://stackoverflow.com/questions/15390807/integer-square-root-in-python
+def large_sqrt(n):
+    x = n
+    y = (x + 1) // 2
+    while y < x:
+        x = y
+        y = (x + n // x) // 2
+    return x
+
 '''
 Generates a public/private key pair with min <= n <= max
 Returns ((e, n), (d, n)) where (e, n) is the public key and (d, n) is the private key
 '''
-def keygen(min=STANDARD_MIN, max=STANDARD_MAX, e=STANDARD_E):
+def keygen(bitlen = STANDARD_BITLEN, e=STANDARD_E):
     primes = []
     while len(primes) < 2:
-        possible = random.randint(int(math.sqrt(min)), int(math.sqrt(max)))
+        possible = random.randint(int(large_sqrt(2**bitlen)), int(large_sqrt(2**(bitlen+1))))
         if millerRabinTest(possible, 100) and not possible in primes and not possible%e == 1:
             primes.append(possible)
     n = (primes[0])*(primes[1])
@@ -189,9 +198,7 @@ Similar to checkSignature, but doesn't completely verify the format of the signa
 def flawedCheckSignature(message, signature, publicKey):
     decryptedSignature = decryptString(signature, publicKey, True)
     messageDigest = convert.intToByteString(hash.sha256(message))
-    return (decryptedSignature[-1*len(messageDigest):] == messageDigest and
-        decryptedSignature[-1*len(messageDigest)-1] == chr(0) and
-        decryptedSignature[0:3] == chr(0)+chr(1)+chr(255))
+    return re.match(chr(0)+chr(1)+chr(255)+"+"+chr(0)+messageDigest, decryptedSignature) is not None
 
 
 if __name__ == "__main__":
@@ -213,7 +220,8 @@ if __name__ == "__main__":
     assert not checkSignature(testMessage, badSignature, pubKey)
     assert not flawedCheckSignature(testMessage, badSignature, pubKey)
 
-    flawedSignatureBlock = chr(0)+chr(1)+chr(255)+generateSignatureBlock(testMessage)[19:]
+    flawedSignatureBlock = chr(0)+chr(1)+chr(255)+generateSignatureBlock(testMessage)[19:]+chr(0)*16
+    print repr(flawedSignatureBlock)
     flawedSignature = encryptString(flawedSignatureBlock, privKey, True)
 
     assert not checkSignature(testMessage, flawedSignature, pubKey)
