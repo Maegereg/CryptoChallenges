@@ -204,17 +204,19 @@ if __name__ == "__main__":
     plaintext = decryptString(ciphertext, privKey)
 
     assert plaintext == testMessage
-    '''
-    plaintext = '\x01"s\xf4$`\xae\xde\x00\xb0\xeb7\xf1\x00aAR'
-    e = 3
-    n = 536161364582062137235869697073367946849L
-    assert encodePlaintext(plaintext, (e, n), False) == [convert.byteStringToInt(plaintext)]
-    '''
+    
     signature = generateSignature(testMessage, privKey)
     assert checkSignature(testMessage, signature, pubKey)
     assert flawedCheckSignature(testMessage, signature, pubKey)
     _, newPrivKey = keygen()
     badSignature = generateSignature(testMessage, newPrivKey)
     assert not checkSignature(testMessage, badSignature, pubKey)
+    assert not flawedCheckSignature(testMessage, badSignature, pubKey)
+
+    flawedSignatureBlock = chr(0)+chr(1)+chr(255)+generateSignatureBlock(testMessage)[19:]
+    flawedSignature = encryptString(flawedSignatureBlock, privKey, True)
+
+    assert not checkSignature(testMessage, flawedSignature, pubKey)
+    assert flawedCheckSignature(testMessage, flawedSignature, pubKey)
 
 
