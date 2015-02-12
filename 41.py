@@ -15,22 +15,25 @@ class RSAOracle:
 	'''
 	Performs a decryption on the ciphertext. Returns either the plaintext, 
 	or an empty string if the message has already been decrypted
+	Accepts the encoded form of the ciphertext, not the string form,
+	and returns the encoded form of the plaintext, not the string form
 	'''
 	def decrypt(self, ciphertext):
-		hashValue = hash.sha256(ciphertext)
+		hashValue = hash.sha256(rsa.decodeCiphertext(ciphertext, self.pubkey))
 		if hashValue in self.prevMessages:
 			return ""
 		else:
 			self.prevMessages.add(hashValue)
-			#We can't just combine back to a string because the math wouldn't work
-			return rsa.decryptString(ciphertext, self.privkey, True)
+			return map(lambda x: rsa.decryptInt(x, self.privkey), ciphertext)
 
 	'''
-	Generate an encrypted message that can't just be decrypted
+	Generate an encrypted message that can't just be decrypted.
+	Returns the encoded form of the ciphertext
 	'''
 	def getMessage(self):
 		message = "message"
 		toReturn = rsa.encryptString(message, self.pubkey)
+		toReturn = rsa.encodeCiphertext(toReturn, self.pubkey)
 		#So it can't just be decrypted
 		self.decrypt(toReturn)
 		return toReturn
@@ -55,23 +58,19 @@ def generateModifiedCiphertext(ciphertext, publicExponent, modulus):
 '''
 Given an oracle and a ciphertext, but assuming we can't just ask the oracle to decrypt the 
 ciphertext, modifies the ciphertext, decrypts it and recovers the plaintext
+Accepts an encoded ciphertext (list of ints)
 '''
 def decryptCiphertext(ciphertext, oracle):
 	e, n = oracle.getPublicKey()
-
-	encodedCiphertext = rsa.encodeCiphertext(ciphertext, oracle.getPublicKey())
 	
-	newCtext, S = generateModifiedCiphertext(encodedCiphertext, e, n)
+	newCtext, S = generateModifiedCiphertext(ciphertext, e, n)
 
-	newPlaintext = oracle.decrypt(rsa.decodeCiphertext(newCtext, oracle.getPublicKey()))
-
-	#Encoding is failing in this case
-	encodedPlaintext = rsa.encodePlaintext(newPlaintext, oracle.getPublicKey(), False)
+	newPlaintext = oracle.decrypt(newCtext)
 
 	inverseS = rsa.modInverse(S, n)
-	encodedPlaintext = map(lambda x: (x*inverseS)%n, encodedPlaintext)
+	encodedPlaintext = map(lambda x: (x*inverseS)%n, newPlaintext)
 
-	return "".join(map(convert.intToByteString, encodedPlaintext))
+	return rsa.decodePlaintext(encodedPlaintext, oracle.getPublicKey())
 
 
 
