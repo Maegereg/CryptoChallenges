@@ -85,6 +85,12 @@ def decryptInt(ciphertext, privateKey):
     return encryptInt(ciphertext, privateKey)
 
 '''
+Gets the block length of RSA in bytes based on the given key
+'''
+def getBlocklen(key):
+    return int(math.log(key[1], 256))
+
+'''
 Transforms a plaintext message into a list of integers 
 NOTE: while decodePlaintext(encodePlaintext(input)) is garuanteed to produce input,
 encodePlaintext(decodePlaintext(input)) is not garuanteed to produce input
@@ -92,7 +98,7 @@ key can be either a public or private key in the form of (e/d, n)
 '''
 def encodePlaintext(message, key, pad=True):
     #The largest number of bytes that can only represent numbers smaller than the modulus.
-    blockLen = blockLen = int(math.log(key[1], 256))
+    blockLen = int(math.log(key[1], 256))
     if pad:
         paddedMessage = padding.pkcs7String(message, blockLen)
     else:
@@ -180,7 +186,8 @@ Generates a signature for the given message based on the given private key
 Returns a string
 '''
 def generateSignature(message, privateKey):
-    signatureBlock = generateSignatureBlock(message)
+    blockLen = int(math.log(privateKey[1], 256))
+    signatureBlock = generateSignatureBlock(message, blockLen)
     return encryptString(signatureBlock, privateKey, True)
 
 '''
@@ -198,7 +205,7 @@ Similar to checkSignature, but doesn't completely verify the format of the signa
 def flawedCheckSignature(message, signature, publicKey):
     decryptedSignature = decryptString(signature, publicKey, True)
     messageDigest = convert.intToByteString(hash.sha256(message))
-    return re.match(chr(0)+chr(1)+chr(255)+"+"+chr(0)+messageDigest, decryptedSignature) is not None
+    return re.match(chr(0)+chr(1)+chr(255)+"+"+chr(0)+re.escape(messageDigest), decryptedSignature) is not None
 
 
 if __name__ == "__main__":
@@ -221,7 +228,6 @@ if __name__ == "__main__":
     assert not flawedCheckSignature(testMessage, badSignature, pubKey)
 
     flawedSignatureBlock = chr(0)+chr(1)+chr(255)+generateSignatureBlock(testMessage)[19:]+chr(0)*16
-    print repr(flawedSignatureBlock)
     flawedSignature = encryptString(flawedSignatureBlock, privKey, True)
 
     assert not checkSignature(testMessage, flawedSignature, pubKey)
