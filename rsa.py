@@ -18,7 +18,6 @@ def millerRabinTest(n, k):
         d = d/2
         s += 1
     for i in range(0, k):
-        #Insucure - should use /dev/urandom instead
         a = random.randint(2, n-2)
         temp = pow(a, d, n)
         prime = prime or temp == 1 or temp == n-1
@@ -29,6 +28,13 @@ def millerRabinTest(n, k):
             return False
     return True
         
+def getPrime(bitlen):
+    while True:
+        #Insucure - should use /dev/urandom instead
+        possiblePrime = random.randint(int(large_sqrt(2**(bitlen-1))), int(large_sqrt(2**bitlen)))
+        if millerRabinTest(possiblePrime, 100):
+            return possiblePrime
+
 #Performs the euclidian extended gcd algorithm
 def extended_gcd(a, b):
     x = 0
@@ -62,6 +68,7 @@ Returns ((e, n), (d, n)) where (e, n) is the public key and (d, n) is the privat
 def keygen(bitlen = STANDARD_BITLEN, e=STANDARD_E):
     primes = []
     while len(primes) < 2:
+        #Insucure - should use /dev/urandom instead
         possible = random.randint(int(large_sqrt(2**bitlen)), int(large_sqrt(2**(bitlen+1))))
         if millerRabinTest(possible, 100) and not possible in primes and not possible%e == 1:
             primes.append(possible)
