@@ -29,7 +29,7 @@ def generateParameters(L = 2048, N = 224):
 Accepts a set of DSA parameters in a tuple, (p, q, g)
 Returns a pair (pubkey, privkey) with the form ((p, q, g, y), (p, q, g, x))
 '''
-def generateKeys(params):
+def generateKeys(params = STANDARD_PARAMS):
 	p, q, g = params
 	#Insecure - should be /dev/urandom
 	x = random.randint(1, q-1)
@@ -37,15 +37,21 @@ def generateKeys(params):
 
 	return ((p, q, g, y), (p, q, g, x))
 
-def signMessage(message, privKey, hashFunction = hash.sha1):
+def signMessageWithK(k, messageHash, x, p, q, g):
+	r = pow(g, k, p)%q
+	s = (rsa.modInverse(k, q)* (messageHash + x*r)) % q
+	return (r, s)
+
+def signMessage(message, privKey, hashFunction = hash.sha1, leakK = False):
 	p, q, g, x = privKey
 	k = 0
 	r = 0
 	s = 0
 	while r == 0 or s == 0:
 		k = random.randint(1, q-1)
-		r = pow(g, k, p)%q
-		s = (rsa.modInverse(k, q)* (hashFunction(message) + x*r)) % q
+		r, s = signMessageWithK(k, hashFunction(message), x, p, q, g)
+	if leakK:
+		return ((r, s), k)
 	return (r, s)
 
 def verifySignature(message, pubKey, signature, hashFunction = hash.sha1):
