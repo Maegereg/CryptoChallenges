@@ -15,8 +15,6 @@ def bruteForceKey(messageHash, signature, pubKey):
 		if testSignature == signature:
 			return (p, q, g, x)
 		k += 1
-		if k == 2**16:
-			print "HALP"
 
 
 if __name__ == "__main__":
